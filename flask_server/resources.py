@@ -1,28 +1,46 @@
 import boto3
-from config import S3_BUCKET, S3_KEY, S3_SECRET
+from config import S3_BUCKET
 from flask import session
-
-def _get_s3_resource():
-    if S3_KEY and S3_SECRET:
-        return boto3.resource(
-            's3',
-            aws_access_key_id=S3_KEY,
-            aws_secret_access_key=S3_SECRET
-        )
-    else:
-        return boto3.resource('s3')
-
+import csv
 
 def get_bucket():
-    s3_resource = _get_s3_resource()
-    if 'bucket' in session:
-        bucket = session['bucket']
+    resource = boto3.resource('s3')
+    return resource.Bucket(S3_BUCKET)
+
+def get_dynamo_client():
+    return boto3.client('dynamodb')
+
+def get_records_count(file_name):
+    client = get_dynamo_client()
+    table_name = get_table_name_from_filename(file_name)
+    
+    if table_name != '':
+        response = client.scan(
+            TableName=table_name)
+        return response[0]['Count']
     else:
-        bucket = S3_BUCKET
+        return 0
 
-    return s3_resource.Bucket(bucket)
+def get_table_name_from_filename(file_name):
+    table = ''
+    if file_name.endswith("Casualty.csv"):
+        table = 'table_casualty'
+    elif file_name.endswith("Units.csv"):
+        table = 'table_units'
+    elif file_name.endswith("Crash.csv"):
+        table = 'table_crash'
+    return table
 
-
-def get_buckets_list():
+def csv_get_dict_records(filename):    
     client = boto3.client('s3')
-    return client.list_buckets().get('Buckets')
+
+    bucket_name = S3_BUCKET
+    object_key = filename
+
+    csv_obj = client.get_object(Bucket=bucket_name, Key=object_key)
+    body = csv_obj['Body']
+
+    csv_string = body.read().decode('utf-8-sig')
+    file_content = csv_string.split("\n")
+
+    return  csv.DictReader(file_content, delimiter=',', quotechar='"')
