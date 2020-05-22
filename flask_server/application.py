@@ -118,58 +118,39 @@ def download():
 
 @app.route('/api/register', methods=['POST'])
 def register():
-    email = request.json['email']
-    password = request.json['password']
+    if request.method == 'POST' and 'username' in request.json and 'password' in request.json:
+        username = request.json['username']
+        password = request.json['password']
 
-    print(email, ", ", password)
-    password_hashed = PasswordHelper().hash_password(password)
+        print(username, ", ", password)
+        password_hashed = PasswordHelper().hash_password(password)
 
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table('table_accounts')
+        records = DbOperation(mysql).check_user_exists(username)
 
-    #check if user exixts
-    response = table.query(
-        KeyConditionExpression=Key('email').eq(email)
-    )
-    objects = response['Items']
+        if records is not None:
+            return json.dumps(Response_Message(False, "Duplicate user.").__dict__)
 
-    #return failure
-    if len(objects) > 0:
-        return json.dumps(Response_Message(False, "Duplicate user.").__dict__)
-
-    #else insert the new user
-    try: 
-        response = table.put_item(
-            Item={
-                'email': email,
-                'password': password_hashed,
-                'updated_time': str(datetime.datetime.now())
-            }
-        )
-        return json.dumps(Response_Message(True).__dict__)
-    except Exception as ex:
-        return json.dumps(Response_Message(False).__dict__)
+        #else insert the new user
+        try: 
+            DbOperation(mysql).insert_user(username, password_hashed)
+            return json.dumps(Response_Message(True).__dict__)
+        except Exception as ex:
+            return json.dumps(Response_Message(False, str(ex)).__dict__)
 
 
 @app.route('/api/login', methods=['POST'])
 def login():
     try:
-        email = request.json['email']
+        username = request.json['username']
         password = request.json['password']
 
-        dynamodb = boto3.resource('dynamodb')
-        table = dynamodb.Table('table_accounts')
-
         #check if user exixts
-        response = table.query(
-            KeyConditionExpression=Key('email').eq(email)
-        )
-        objects = response['Items']
-
-        if len(objects) == 0:
+        records = DbOperation(mysql).check_user_exists(username)
+        print(records)
+        if records is None:
             return json.dumps(Response_Message(False, "User doesn't exist.").__dict__)
         else:
-            hashed_password = objects[0]['password']
+            hashed_password = records['password']
             password_matched = PasswordHelper().verify_password(hashed_password, password)
 
             if password_matched:
@@ -191,20 +172,18 @@ def uploadfile():
     for data in fileList:
         if data.key == file.filename:
             return json.dumps(Response_Message(False, 'Upload Failed!! File with same name already exists.').__dict__)
-
     try:
-        #initial_count = get_records_count(file.filename)
-
         my_bucket.Object(file.filename).put(Body=file)
-        print("Upload done.")
 
-        #get csv records for the file
-        records = csv_get_dict_records(file.filename)
-        records_inserted = DbOperation(mysql).insert_records(records)
-
-        return json.dumps(Response_Message(False, 'File uploaded successfully. Total records inserted: ' + str(records_inserted)).__dict__)
+        #only upload crash related files in db records.
+        if file.filename.endswith(".csv"):        
+            #get csv records for the file
+            records = csv_get_dict_records(file.filename)
+            records_inserted = DbOperation(mysql).insert_records(records)
+            return json.dumps(Response_Message(True, 'File uploaded successfully. Total records inserted in database: ' + str(records_inserted)).__dict__)
+        else:
+            return json.dumps(Response_Message(True, 'File uploaded successfully.').__dict__)
     except Exception as ex:
-        print(ex)
         return json.dumps(Response_Message(False, 'Upload failed. Exception: ' + str(ex)))
 
 
@@ -221,6 +200,7 @@ def download_file():
         headers={"Content-Disposition": "attachment;filename={}".format(key)}
     )
 
+
 @app.route('/api/delete', methods=['POST'])
 def delete_file():
     try:
@@ -230,6 +210,7 @@ def delete_file():
         return json.dumps(Response_Message(True, "File deleted sucessfully.").__dict__)
     except Exception as ex:
         return json.dumps(Response_Message(False, "Filed to delete the file.").__dict__)
+
 
 @app.route('/api/files', methods=['GET', 'POST'])
 def all_files():
@@ -267,10 +248,10 @@ def data_by_year():
 def data_by_gender():
     if request.method == 'POST' and 'year' in request.json:
         year = request.json['year']
-        records = DbOperation(mysql).get_male_females(year)
+        records = DbOperation(mysql).get_records_male_females(year)
         return jsonify(records)
     else:
-        records = DbOperation(mysql).get_male_females(None)
+        records = DbOperation(mysql).get_records_male_females(None)
         #return json.dumps(records, cls=DecimalEncoder)
         return jsonify(records)
 
@@ -290,6 +271,30 @@ def data_by_region():
 class DbOperation:
     def __init__(self, mysqlConn):
         self.mysql = mysqlConn
+
+
+    def check_user_exists(self, username):
+        cursor = self.mysql.connection.cursor(MySQLdb.cursors.DictCursor)  
+        try:
+            cursor.execute("SELECT * from accounts where username = %s", (username,))
+            content = cursor.fetchone()
+            return content
+        except Exception as ex:
+            print("Exceptions :: ", str(ex))
+        finally:
+            cursor.close()
+
+    def insert_user(self, username, hashed_password):
+        cur = self.mysql.connection.cursor() 
+
+        try:
+            cur.execute("INSERT INTO accounts(username, password) VALUES(%s, %s)", (username, hashed_password ))
+            mysql.connection.commit()
+            return True
+        except Exception as ex:
+            print("Exception: ", str(ex))
+        finally:
+            cur.close()
 
 
     def insert_records(self, records):
@@ -318,7 +323,6 @@ class DbOperation:
 
                 if ACCIDENT_DATE is None or ACCIDENT_TIME is None:
                     continue
-
                 
                 values_list.append((record['ACCIDENT_NO'], ACCIDENT_DATE, ACCIDENT_TIME, record['ACCIDENT_TYPE'], 
                 record['DAY_OF_WEEK'], record['LIGHT_CONDITION'], record['SPEED_ZONE'], LONGITUDE, 
@@ -440,4 +444,4 @@ class DbOperation:
 
 
 if __name__ == "__main__":
-    app.run(host="localhost", debug=True)
+    app.run(host="localhost", port=5000, debug=True)
