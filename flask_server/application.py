@@ -267,10 +267,10 @@ def data_by_year():
 def data_by_gender():
     if request.method == 'POST' and 'year' in request.json:
         year = request.json['year']
-        records = DbOperation(mysql).get_male_females(year)
+        records = DbOperation(mysql).get_records_male_females(year)
         return jsonify(records)
     else:
-        records = DbOperation(mysql).get_male_females(None)
+        records = DbOperation(mysql).get_records_male_females(None)
         #return json.dumps(records, cls=DecimalEncoder)
         return jsonify(records)
 
