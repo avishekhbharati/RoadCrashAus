@@ -73,13 +73,15 @@ def upload():
         my_bucket.Object(file.filename).put(Body=file)
         print("Upload done.")
 
-        #get csv records for the file
-        records = csv_get_dict_records(file.filename)
-        records_inserted = DbOperation(mysql).insert_records(records)
-
-
-        #final_count = get_records_count(file.filename)
-        flash('File uploaded successfully. Total records inserted: ' + str(records_inserted))
+        #only upload crash related files in db records.
+        if file.filename.endswith("Crash.csv"):   
+            #get csv records for the file
+            records = csv_get_dict_records(file.filename)
+            records_inserted = DbOperation(mysql).insert_records(records)
+            #final_count = get_records_count(file.filename)
+            flash('File uploaded successfully. Total records inserted in db: ' + str(records_inserted))
+        else:
+            flash('File uploaded successfully.')
     except Exception as ex:
         print(ex)
         flash('Upload failed. Exception: ', str(ex))
@@ -176,7 +178,7 @@ def uploadfile():
         my_bucket.Object(file.filename).put(Body=file)
 
         #only upload crash related files in db records.
-        if file.filename.endswith(".csv"):        
+        if file.filename.endswith("Crash.csv"):        
             #get csv records for the file
             records = csv_get_dict_records(file.filename)
             records_inserted = DbOperation(mysql).insert_records(records)
