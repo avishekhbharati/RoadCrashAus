@@ -1,17 +1,27 @@
 # Flask S3 Browser
 
+Install pip3
+```
+sudo apt update
+sudo apt install python3-pip
+pip3 --version
+
+#update setup tools
+pip3 install --upgrade setuptools
+sudo apt-get install python3.6-dev libmysqlclient-dev
+```
+
+
 Creating a virtual environment is recommended.
 
 Creating virtual environment using Python 3 installed with Homebrew:
 ```shell
-virtualenv -p python3 venv --always-copy
+sudo apt install python3-venv
+pip3 install virtualenv
+cd flask_api
+
+python3 -m venv venv
 source venv/bin/activate
-
-For Windows users
-PS C:\DEV\aProject\env\Scripts>.\activate
-
-or using git-bash
-source venv/Scripts/activate
 ```
 
 Install Dependencies
