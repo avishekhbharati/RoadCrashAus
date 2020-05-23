@@ -120,9 +120,11 @@ def download():
 @app.route('/api/register', methods=['POST'])
 def register():
     if request.method == 'POST' and 'username' in request.json and 'password' in request.json:
+        print("At Register Func")
         username = request.json['username']
         password = request.json['password']
 
+        print("cred: ", username, "|", password)
         password_hashed = PasswordHelper().hash_password(password)
 
         records = DbOperation(mysql).check_user_exists(username)
@@ -141,9 +143,10 @@ def register():
 @app.route('/api/login', methods=['POST'])
 def login():
     try:
+        print("At login func")
         username = request.json['username']
         password = request.json['password']
-
+        print("cred: ", username, "|", password)
         #check if user exixts
         records = DbOperation(mysql).check_user_exists(username)
         if records is None:
