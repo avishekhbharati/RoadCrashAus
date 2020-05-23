@@ -5,6 +5,10 @@ Install pip3
 sudo apt update
 sudo apt install python3-pip
 pip3 --version
+sudo apt-get install awscli #install awscli
+
+#update your aws credentials
+nano ~/.aws/credentials 
 
 #update setup tools
 pip3 install --upgrade setuptools
