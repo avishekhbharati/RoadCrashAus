@@ -39,13 +39,12 @@ except Exception as e:
     sys.exit()
 
 
-@app.route('/index')
+@app.route('/')
 def index():
     return render_template('index.html')
 
 
-@app.route('/')
-@app.route('/files', methods=['GET', 'POST'])
+@app.route('/admin/files', methods=['GET', 'POST'])
 def files():
     my_bucket = get_bucket()
     summaries = my_bucket.objects.all()
@@ -124,7 +123,6 @@ def register():
         username = request.json['username']
         password = request.json['password']
 
-        print(username, ", ", password)
         password_hashed = PasswordHelper().hash_password(password)
 
         records = DbOperation(mysql).check_user_exists(username)
@@ -148,7 +146,6 @@ def login():
 
         #check if user exixts
         records = DbOperation(mysql).check_user_exists(username)
-        print(records)
         if records is None:
             return json.dumps(Response_Message(False, "User doesn't exist.").__dict__)
         else:
@@ -234,11 +231,10 @@ def all_files():
     return jsonify(payload)
 
 
-@app.route('/api/crashbyyear', methods=['POST', 'GET'])
+@app.route('/api/datayear', methods=['POST', 'GET'])
 def data_by_year():
     if request.method == 'POST' and 'year' in request.json:
         year = request.json['year']
-        print(year)
         records = DbOperation(mysql).get_records_for_year(year)
         return jsonify(records)
     else:
@@ -267,7 +263,6 @@ def data_by_region():
     else:
         records = DbOperation(mysql).get_records_region(None)
         #return json.dumps(records, cls=DecimalEncoder)
-        print(records)
         return jsonify(records)
 
 class DbOperation:
@@ -371,19 +366,15 @@ class DbOperation:
                 cursor.execute("SELECT YEAR(ACCIDENT_DATE) as _year, MONTH(ACCIDENT_DATE) as _month, COUNT(*) as _count FROM crashdetails WHERE YEAR(ACCIDENT_DATE) = %s GROUP BY _year, _month ORDER BY _year, _month ", (year_param,))
             results = cursor.fetchall()
 
-            print(results)
             payload = []
             content = {}
             
             year_match = 0
             for result in results:
-                print(result)
                 content = {'year': result['_year'], 'month': self.get_month(result['_month']), 'count': result['_count']}
                 payload.append(content)
                 content = {}
             
-            print("Payloaddddddddddddddddd")
-            print(payload)
             return payload 
 
         except Exception as ex:
