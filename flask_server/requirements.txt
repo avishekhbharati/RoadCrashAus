@@ -41,7 +41,7 @@ rinoh-typeface-texgyrecursor==0.1.1
 rinoh-typeface-texgyreheros==0.1.1
 rinoh-typeface-texgyrepagella==0.1.1
 rinohtype==0.4.0
-rsa==3.4.2
+rsa==4.1
 s3transfer==0.1.13
 six==1.11.0
 snowballstemmer==2.0.0
