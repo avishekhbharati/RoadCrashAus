@@ -28,7 +28,7 @@ marshmallow==3.5.2
 packaging==20.3
 protobuf==3.11.3
 pyasn1==0.4.8
-Pygments==2.6.1
+Pygments==2.7.4
 PyMySQL==0.9.3
 pyparsing==2.4.7
 python-dateutil==2.6.1
